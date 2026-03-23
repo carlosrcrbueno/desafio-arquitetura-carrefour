@@ -27,10 +27,9 @@ var app = builder.Build();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<AuthorizationMockMiddleware>();
 
+app.UseHttpsRedirection();
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseHttpsRedirection();
 
 app.MapControllers();
 

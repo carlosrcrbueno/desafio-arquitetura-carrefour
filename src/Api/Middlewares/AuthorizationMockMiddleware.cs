@@ -14,6 +14,13 @@ public class AuthorizationMockMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Allow unauthenticated access to Swagger endpoints so documentation loads without a token.
+        if (context.Request.Path.StartsWithSegments("/swagger"))
+        {
+            await _next(context);
+            return;
+        }
+
         if (!context.Request.Headers.ContainsKey("Authorization") ||
             string.IsNullOrWhiteSpace(context.Request.Headers["Authorization"]))
         {

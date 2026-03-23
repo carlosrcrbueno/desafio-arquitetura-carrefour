@@ -1,0 +1,41 @@
+﻿using Api.EventBus;
+using Api.Middlewares;
+using Balance.Infrastructure.Database;
+using Scalar.AspNetCore;
+using Shared.Messaging;
+using Transactions.Infrastructure.Database;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddOpenApi();
+
+// EventBus singleton implementation lives in the Api layer.
+builder.Services.AddSingleton<IEventBus, InMemoryEventBus>();
+
+// Connection string configuration (must be provided via configuration in a real environment).
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+
+// IoC per module: each module wires its own services.
+builder.Services.AddTransactions(connectionString);
+builder.Services.AddBalance(connectionString);
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<AuthorizationMockMiddleware>();
+
+app.UseHttpsRedirection();
+
+app.MapControllers();
+
+// Expose OpenAPI document using built-in ASP.NET Core support.
+app.MapOpenApi();
+
+// Expose interactive API documentation UI using Scalar (Swagger-like experience).
+app.MapScalarApiReference();
+
+app.Run();
