@@ -1,0 +1,103 @@
+namespace Balance.Infrastructure.Repositories;
+
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
+using Balance.Domain.Entities;
+using Balance.Domain.Interfaces;
+using Shared.Database;
+
+public class DailyBalanceRepository : IDailyBalanceRepository
+{
+    private readonly IDbConnectionFactory _connectionFactory;
+
+    public DailyBalanceRepository(IDbConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory;
+    }
+
+    public async Task UpsertAsync(DailyBalance balance)
+    {
+        if (balance is null)
+        {
+            throw new ArgumentNullException(nameof(balance));
+        }
+
+        const string sql = @"MERGE INTO DailyBalances AS target
+USING (SELECT @AccountId AS AccountId, @Date AS Date, @Balance AS Balance) AS source
+ON target.AccountId = source.AccountId AND target.Date = source.Date
+WHEN MATCHED THEN
+    UPDATE SET Balance = source.Balance
+WHEN NOT MATCHED THEN
+    INSERT (AccountId, Date, Balance) VALUES (source.AccountId, source.Date, source.Balance);";
+
+        // Use synchronous open since IDbConnection does not expose OpenAsync.
+        using var connection = _connectionFactory.CreateConnection();
+        connection.Open();
+
+        await using var command = (SqlCommand)connection.CreateCommand();
+        command.CommandText = sql;
+
+        command.Parameters.Add(new SqlParameter("@AccountId", SqlDbType.UniqueIdentifier) { Value = balance.AccountId });
+        command.Parameters.Add(new SqlParameter("@Date", SqlDbType.Date) { Value = balance.Date });
+        command.Parameters.Add(new SqlParameter("@Balance", SqlDbType.Decimal) { Value = balance.Balance });
+
+        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<DailyBalance>> GetByAccountAndPeriodAsync(
+        Guid accountId,
+        DateTime startDate,
+        DateTime endDate)
+    {
+        if (endDate < startDate)
+        {
+            throw new ArgumentException("End date must be greater than or equal to start date.", nameof(endDate));
+        }
+
+        const string sql = @"SELECT AccountId, Date, Balance
+FROM DailyBalances
+WHERE AccountId = @AccountId AND Date >= @StartDate AND Date <= @EndDate
+ORDER BY Date";
+
+        var results = new List<DailyBalance>();
+
+        using var connection = _connectionFactory.CreateConnection();
+        connection.Open();
+
+        await using var command = (SqlCommand)connection.CreateCommand();
+        command.CommandText = sql;
+
+        command.Parameters.Add(new SqlParameter("@AccountId", SqlDbType.UniqueIdentifier) { Value = accountId });
+        command.Parameters.Add(new SqlParameter("@StartDate", SqlDbType.Date) { Value = startDate.Date });
+        command.Parameters.Add(new SqlParameter("@EndDate", SqlDbType.Date) { Value = endDate.Date });
+
+        await using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+        while (await reader.ReadAsync().ConfigureAwait(false))
+        {
+            var accountIdValue = reader.GetGuid(0);
+            var dateValue = reader.GetDateTime(1); // DATE maps to DateTime
+            var balanceValue = reader.GetDecimal(2);
+
+            var dailyBalance = new DailyBalance(accountIdValue, DateOnly.FromDateTime(dateValue), balanceValue);
+            results.Add(dailyBalance);
+        }
+
+        return results;
+    }
+
+    public async Task DeleteAllAsync()
+    {
+        const string sql = "DELETE FROM DailyBalances";
+
+        using var connection = _connectionFactory.CreateConnection();
+        connection.Open();
+
+        await using var command = (SqlCommand)connection.CreateCommand();
+        command.CommandText = sql;
+
+        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+}
