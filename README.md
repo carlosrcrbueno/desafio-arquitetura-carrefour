@@ -272,7 +272,7 @@ Fluxos recomendados:
 
 ### 5.3. Testar com k6 (rate limit)
 
-Usando um script simples de `k6` (não incluído por padrão, mas fácil de criar), é possível:
+Usando um script simples de `k6` (script disponivel na pasta docs/k6), é possível:
 
 - Simular 100+ requisições/s em `POST /transactions`.
 - Ver, no relatório, quantos `status_429` vs. `status_other` aparecem por segundo.
