@@ -7,7 +7,7 @@ using Transactions.Domain.Entities;
 
 public interface ITransactionRepository
 {
-    Task InsertAsync(Transaction transaction);
+    Task<bool> InsertAsync(Transaction transaction);
 
     Task<IReadOnlyList<Transaction>> GetByAccountAndPeriodAsync(
         Guid accountId,

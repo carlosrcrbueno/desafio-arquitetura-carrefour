@@ -19,11 +19,12 @@ public class CreateTransactionUseCase : ICreateTransactionUseCase
 		_eventBus = eventBus;
 	}
 
-	public async Task<CreateTransactionResponse> ExecuteAsync(CreateTransactionRequest request)
+ public async Task<CreateTransactionResponse> ExecuteAsync(CreateTransactionRequest request)
 	{
-      var idempotenceKey = string.IsNullOrWhiteSpace(request.IdempotenceKey)
-			? Guid.NewGuid().ToString("N")
-			: request.IdempotenceKey;
+        var hasIdempotenceKey = !string.IsNullOrWhiteSpace(request.IdempotenceKey);
+		var idempotenceKey = hasIdempotenceKey
+			? request.IdempotenceKey
+			: Guid.NewGuid().ToString("N");
 
 		var transaction = new Transaction(
 			request.TenantId,
@@ -34,24 +35,29 @@ public class CreateTransactionUseCase : ICreateTransactionUseCase
 			DateTime.UtcNow,
 			idempotenceKey);
 
-		await _transactionRepository.InsertAsync(transaction).ConfigureAwait(false);
+        var inserted = await _transactionRepository.InsertAsync(transaction).ConfigureAwait(false);
 
-		var @event = new TransactionCreatedEvent
+		// Only publish event when transaction was effectively inserted (not an idempotent replay)
+		if (inserted)
 		{
-			TenantId = transaction.TenantId,
-			TransactionId = transaction.Id,
-			AccountId = transaction.AccountId,
-			Amount = transaction.Amount,
-			Type = (Shared.Enums.TransactionType)transaction.Type,
-			CreatedAt = transaction.CreatedAt
-		};
+			var @event = new TransactionCreatedEvent
+			{
+				TenantId = transaction.TenantId,
+				TransactionId = transaction.Id,
+				AccountId = transaction.AccountId,
+				Amount = transaction.Amount,
+				Type = (Shared.Enums.TransactionType)transaction.Type,
+				CreatedAt = transaction.CreatedAt
+			};
 
-		await _eventBus.PublishAsync(@event).ConfigureAwait(false);
+			await _eventBus.PublishAsync(@event).ConfigureAwait(false);
+		}
 
 		return new CreateTransactionResponse
 		{
 			TransactionId = transaction.Id,
 			AccountId = transaction.AccountId,
+			IsNew = inserted,
 		};
 	}
 }

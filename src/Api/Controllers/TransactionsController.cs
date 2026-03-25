@@ -41,12 +41,19 @@ public class TransactionsController : ControllerBase
 
         request.TenantId = tenantId;
 
-		var response = await _createTransactionUseCase.ExecuteAsync(request).ConfigureAwait(false);
-		return StatusCode(201, new
-		{
+        var hasIdempotenceKey = !string.IsNullOrWhiteSpace(request.IdempotenceKey);
+        var response = await _createTransactionUseCase.ExecuteAsync(request).ConfigureAwait(false);
+
+        if (hasIdempotenceKey && !response.IsNew)
+        {
+            return Ok(new { message = "valor já processado" });
+        }
+
+        return StatusCode(201, new
+        {
             transactionId = response.TransactionId,
-			accountId = response.AccountId
-		});
+            accountId = response.AccountId
+        });
 	}
 
 	[HttpGet]

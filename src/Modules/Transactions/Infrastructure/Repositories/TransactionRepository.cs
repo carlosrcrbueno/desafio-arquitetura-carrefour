@@ -18,7 +18,7 @@ public class TransactionRepository : ITransactionRepository
         _connectionFactory = connectionFactory;
     }
 
-    public Task InsertAsync(Transaction transaction)
+    public Task<bool> InsertAsync(Transaction transaction)
     {
         if (transaction is null)
         {
@@ -37,19 +37,19 @@ ON CONFLICT (IdempotenceKey) DO NOTHING;";
         using var connection = _connectionFactory.CreateConnection();
         connection.Open();
 
-        using var command = connection.CreateCommand();
+     using var command = connection.CreateCommand();
         command.CommandText = insertSql;
 
         AddParameter(command, "@Id", DbType.Guid, transaction.Id);
         AddParameter(command, "@AccountId", DbType.Guid, transaction.AccountId);
-       AddParameter(command, "@Amount", DbType.Int64, transaction.AmountInCents);
+        AddParameter(command, "@Amount", DbType.Int64, transaction.AmountInCents);
         AddParameter(command, "@Type", DbType.Int32, (int)transaction.Type);
         AddParameter(command, "@CreatedAt", DbType.DateTime, transaction.CreatedAt.ToUniversalTime());
         AddParameter(command, "@IdempotenceKey", DbType.String, transaction.IdempotenceKey);
 
-        command.ExecuteNonQuery();
+        var affected = command.ExecuteNonQuery();
 
-        return Task.CompletedTask;
+        return Task.FromResult(affected > 0);
     }
 
     public Task<IReadOnlyList<Transaction>> GetByAccountAndPeriodAsync(

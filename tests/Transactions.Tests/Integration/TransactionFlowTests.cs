@@ -25,7 +25,7 @@ public class TransactionFlowTests
         transactionRepositoryMock
             .Setup(x => x.InsertAsync(It.IsAny<Transaction>()))
             .Callback<Transaction>(t => savedTransaction = t)
-            .Returns(Task.CompletedTask);
+           .ReturnsAsync(true);
 
         var useCase = new CreateTransactionUseCase(
             transactionRepositoryMock.Object,

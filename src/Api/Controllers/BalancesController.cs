@@ -24,16 +24,14 @@ public class BalancesController : ControllerBase
     }
 
     [HttpGet("daily")]
-    public async Task<IActionResult> GetDaily(
-        [FromQuery] DateTime startDate,
-        [FromQuery] DateTime endDate)
+    public async Task<IActionResult> GetDaily([FromQuery] DateTime startDate)
     {
-        if (startDate == default || endDate == default || endDate < startDate)
+        if (startDate == default)
         {
             return BadRequest(new { error = "Invalid query parameters" });
         }
 
-      if (!HttpContext.Items.TryGetValue("TenantId", out var tenantObj) || tenantObj is not int tenantId || tenantId <= 0)
+        if (!HttpContext.Items.TryGetValue("TenantId", out var tenantObj) || tenantObj is not int tenantId || tenantId <= 0)
         {
             return BadRequest(new { error = "TenantId is required" });
         }
@@ -42,10 +40,15 @@ public class BalancesController : ControllerBase
         {
             TenantId = tenantId,
             StartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc),
-            EndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc)
+            EndDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc)
         };
 
         var result = await _getDailyBalanceUseCase.ExecuteAsync(request).ConfigureAwait(false);
+
+        if (result is null)
+        {
+            return NotFound();
+        }
 
         return Ok(result);
     }
