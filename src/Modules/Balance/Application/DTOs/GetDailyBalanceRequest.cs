@@ -4,7 +4,7 @@ using System;
 
 public class GetDailyBalanceRequest
 {
- public int TenantId { get; init; }
+ public int TenantId { get; set; }
     public DateTime StartDate { get; init; }
     public DateTime EndDate { get; init; }
 }

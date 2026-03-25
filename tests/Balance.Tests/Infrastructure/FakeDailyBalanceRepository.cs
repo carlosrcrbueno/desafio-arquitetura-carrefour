@@ -44,5 +44,12 @@ public class FakeDailyBalanceRepository : IDailyBalanceRepository
         return Task.CompletedTask;
     }
 
+    public Task<DailyBalance?> GetByTenantAndDateAsync(int tenantId, DateTime dateUtc)
+    {
+        var day = DateTime.SpecifyKind(dateUtc.Date, DateTimeKind.Utc);
+        var result = _balances.FirstOrDefault(b => b.TenantId == tenantId && b.Date.Date == day.Date);
+        return Task.FromResult(result);
+    }
+
     public IReadOnlyList<DailyBalance> GetAll() => _balances.ToList();
 }

@@ -25,28 +25,26 @@ public class TransactionCreatedEventHandler
 		}
 
 		// For now, assume a single global tenant id. In a real system, TenantId should be part of the event.
-		var tenantId = @event.TenantId;
-
-		var accountId = @event.AccountId;
+     var tenantId = @event.TenantId;
 		var dateUtc = @event.CreatedAt.ToUniversalTime().Date;
 
 		// Load existing daily balance for this tenant/account/date range.
 		var start = dateUtc;
 		var end = dateUtc.AddDays(1).AddTicks(-1);
 
-		var existing = await _dailyBalanceRepository
+        var existing = await _dailyBalanceRepository
 			.GetByTenantAndPeriodAsync(tenantId, start, end)
 			.ConfigureAwait(false);
 
-		var currentBalance = existing.FirstOrDefault()?.Balance ?? 0m;
+		var currentBalanceInCents = existing.FirstOrDefault()?.BalanceInCents ?? 0L;
 
-		var delta = @event.Type == TransactionType.Credit
-	 ? @event.Amount
-	 : -@event.Amount;
+		var deltaInCents = @event.Type == TransactionType.Credit
+			? (long)Math.Round(@event.Amount * 100m, MidpointRounding.AwayFromZero)
+			: -(long)Math.Round(@event.Amount * 100m, MidpointRounding.AwayFromZero);
 
-		var newBalance = currentBalance + delta;
+		var newBalanceInCents = currentBalanceInCents + deltaInCents;
 
-		var dailyBalance = new DailyBalance(tenantId, accountId, dateUtc, newBalance);
+		var dailyBalance = new DailyBalance(tenantId, Guid.Empty, dateUtc, newBalanceInCents);
 
 		await _dailyBalanceRepository.UpsertAsync(dailyBalance).ConfigureAwait(false);
 	}

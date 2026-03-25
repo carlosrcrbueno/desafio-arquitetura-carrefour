@@ -32,8 +32,8 @@ public class RebuildDailyBalancesUseCase : IRebuildDailyBalancesUseCase
             .ThenBy(t => t.CreatedAt)
             .ToList();
 
-        // Key: TenantId + AccountId + Date (daily granularity, UTC)
-        var balances = new Dictionary<(int TenantId, Guid AccountId, DateTime Date), decimal>();
+        // Key: TenantId + AccountId + Date (daily granularity, UTC), valor em centavos
+        var balances = new Dictionary<(int TenantId, Guid AccountId, DateTime Date), long>();
 
         foreach (var transaction in ordered)
         {
@@ -42,12 +42,12 @@ public class RebuildDailyBalancesUseCase : IRebuildDailyBalancesUseCase
 
             if (!balances.TryGetValue(key, out var current))
             {
-                current = 0m;
+               current = 0L;
             }
 
-            var delta = transaction.Type == TransactionType.Credit
-                ? transaction.Amount
-                : -transaction.Amount;
+          var delta = transaction.Type == TransactionType.Credit
+                ? transaction.AmountInCents
+                : -transaction.AmountInCents;
 
             balances[key] = current + delta;
         }
@@ -55,12 +55,12 @@ public class RebuildDailyBalancesUseCase : IRebuildDailyBalancesUseCase
         // Recreate DailyBalances from computed dictionary.
         await _dailyBalanceRepository.DeleteAllAsync().ConfigureAwait(false);
 
-        foreach (var entry in balances)
+     foreach (var entry in balances)
         {
             var (tenantId, accountId, date) = entry.Key;
-            var balance = entry.Value;
+            var balanceInCents = entry.Value;
 
-            var dailyBalance = new DailyBalance(tenantId, accountId, date, balance);
+            var dailyBalance = new DailyBalance(tenantId, accountId, date, balanceInCents);
             await _dailyBalanceRepository.UpsertAsync(dailyBalance).ConfigureAwait(false);
         }
     }

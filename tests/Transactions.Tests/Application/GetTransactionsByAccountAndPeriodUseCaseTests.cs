@@ -27,8 +27,8 @@ public class GetTransactionsByAccountAndPeriodUseCaseTests
         const int tenantId = 1;
         var transactions = new List<Transaction>
         {
-            new(tenantId, Guid.NewGuid(), accountId, 50m, TransactionType.Credit, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc)),
-            new(tenantId, Guid.NewGuid(), accountId, 75m, TransactionType.Debit, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc))
+           new(tenantId, Guid.NewGuid(), accountId, 5000L, TransactionType.Credit, new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc), "get-1"),
+            new(tenantId, Guid.NewGuid(), accountId, 7500L, TransactionType.Debit, new DateTime(2026, 1, 20, 0, 0, 0, DateTimeKind.Utc), "get-2")
         };
 
         repositoryMock

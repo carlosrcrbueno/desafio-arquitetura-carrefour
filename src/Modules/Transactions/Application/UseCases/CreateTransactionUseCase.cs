@@ -21,13 +21,18 @@ public class CreateTransactionUseCase : ICreateTransactionUseCase
 
 	public async Task<CreateTransactionResponse> ExecuteAsync(CreateTransactionRequest request)
 	{
+      var idempotenceKey = string.IsNullOrWhiteSpace(request.IdempotenceKey)
+			? Guid.NewGuid().ToString("N")
+			: request.IdempotenceKey;
+
 		var transaction = new Transaction(
 			request.TenantId,
 			Guid.NewGuid(),
 			request.AccountId,
-			request.Amount,
-			request.Type,
-			DateTime.UtcNow);
+         (long)Math.Round(request.Amount * 100m, MidpointRounding.AwayFromZero),
+           request.Type,
+			DateTime.UtcNow,
+			idempotenceKey);
 
 		await _transactionRepository.InsertAsync(transaction).ConfigureAwait(false);
 

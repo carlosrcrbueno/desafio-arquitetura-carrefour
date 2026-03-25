@@ -3,6 +3,7 @@ namespace Balance.Infrastructure.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 using Balance.Domain.Entities;
 using Balance.Domain.Interfaces;
@@ -24,9 +25,9 @@ public class DailyBalanceRepository : IDailyBalanceRepository
 			throw new ArgumentNullException(nameof(balance));
 		}
 
-		const string sql = @"INSERT INTO DailyBalances (TenantId, AccountId, Date, Balance)
-VALUES (@TenantId, @AccountId, @Date, @Balance)
-ON CONFLICT (TenantId, AccountId, Date)
+     const string sql = @"INSERT INTO DailyBalances (TenantId, Date, Balance)
+VALUES (@TenantId, @Date, @Balance)
+ON CONFLICT (TenantId, Date)
 DO UPDATE SET Balance = EXCLUDED.Balance;";
 
 		using var connection = _connectionFactory.CreateConnection();
@@ -38,10 +39,9 @@ DO UPDATE SET Balance = EXCLUDED.Balance;";
 		using var command = connection.CreateCommand();
 		command.CommandText = sql;
 
-		AddParameter(command, "@TenantId", DbType.Int32, balance.TenantId);
-		AddParameter(command, "@AccountId", DbType.Guid, balance.AccountId);
+     AddParameter(command, "@TenantId", DbType.Int32, balance.TenantId);
 		AddParameter(command, "@Date", DbType.DateTime, balance.Date.ToUniversalTime());
-		AddParameter(command, "@Balance", DbType.Decimal, balance.Balance);
+		AddParameter(command, "@Balance", DbType.Int64, balance.BalanceInCents);
 
 		command.ExecuteNonQuery();
 
@@ -60,7 +60,7 @@ DO UPDATE SET Balance = EXCLUDED.Balance;";
 				throw new ArgumentException("End date must be greater than or equal to start date.", nameof(endDate));
 			}
 
-			const string sql = @"SELECT TenantId, AccountId, Date, Balance
+          const string sql = @"SELECT TenantId, Date, Balance
 FROM DailyBalances
 WHERE TenantId = @TenantId AND Date >= @StartDate AND Date <= @EndDate
 ORDER BY Date";
@@ -83,12 +83,11 @@ ORDER BY Date";
 			using var reader = command.ExecuteReader();
 			while (reader.Read())
 			{
-				var tenantIdValue = reader.GetInt32(0);
-				var accountIdValue = reader.GetGuid(1);
-				var dateTime = reader.GetDateTime(2).ToUniversalTime();
-				var balanceValue = reader.GetDecimal(3);
-
-				var dailyBalance = new DailyBalance(tenantIdValue, accountIdValue, dateTime, balanceValue);
+             var tenantIdValue = reader.GetInt32(0);
+				var dateTime = reader.GetDateTime(1).ToUniversalTime();
+				var balanceInCents = reader.GetInt64(2);
+				// Usa Guid.Empty como AccountId pois o modelo atual não diferencia contas neste contexto
+				var dailyBalance = new DailyBalance(tenantIdValue, Guid.Empty, dateTime, balanceInCents);
 				results.Add(dailyBalance);
 			}
 
@@ -101,6 +100,13 @@ ORDER BY Date";
 			throw;
 		}
 
+	}
+
+	public async Task<DailyBalance?> GetByTenantAndDateAsync(int tenantId, DateTime dateUtc)
+	{
+		var day = DateTime.SpecifyKind(dateUtc.Date, DateTimeKind.Utc);
+		var list = await GetByTenantAndPeriodAsync(tenantId, day, day).ConfigureAwait(false);
+		return list.FirstOrDefault();
 	}
 
 	public Task DeleteAllAsync()
@@ -120,31 +126,12 @@ ORDER BY Date";
 
 	private static void EnsureTableExists(IDbConnection connection)
 	{
-		const string existsSql = @"
-SELECT 1
-FROM information_schema.tables
-WHERE table_schema = 'public'
-  AND table_type = 'BASE TABLE'
-  AND lower(table_name) = 'dailybalances';";
-
-		using (var existsCommand = connection.CreateCommand())
-		{
-			existsCommand.CommandText = existsSql;
-			var existsResult = existsCommand.ExecuteScalar();
-			if (existsResult is not null && existsResult != DBNull.Value)
-			{
-				// Tabela real 'public.dailybalances' existe, pode seguir
-				return;
-			}
-		}
-
-		const string createSql = @"
-CREATE TABLE DailyBalances (
-    TenantId integer NOT NULL,
-    AccountId uuid NOT NULL,
-    Date timestamp NOT NULL,
-    Balance numeric(18,2) NOT NULL,
-    CONSTRAINT PK_DailyBalances PRIMARY KEY (TenantId, AccountId, Date)
+     const string createSql = @"
+CREATE TABLE IF NOT EXISTS DailyBalances (
+	TenantId integer NOT NULL,
+	Date timestamp NOT NULL,
+	Balance bigint NOT NULL,
+	CONSTRAINT PK_DailyBalances PRIMARY KEY (TenantId, Date)
 );";
 
 		using var createCommand = connection.CreateCommand();

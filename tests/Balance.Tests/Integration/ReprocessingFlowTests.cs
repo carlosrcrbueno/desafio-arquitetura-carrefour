@@ -32,16 +32,18 @@ public class ReprocessingFlowTests
                 tenantId,
                 Guid.NewGuid(),
                 accountId,
-                100m,
+                10000L,
                 (TransactionType)Shared.Enums.TransactionType.Credit,
-                date),
+                date,
+                "reprocess-key-1"),
             new Transaction(
                 tenantId,
                 Guid.NewGuid(),
                 accountId,
-                50m,
+                5000L,
                 (TransactionType)Shared.Enums.TransactionType.Debit,
-                date)
+                date,
+                "reprocess-key-2")
         };
 
         transactionRepositoryMock
@@ -56,10 +58,10 @@ public class ReprocessingFlowTests
         // Act
         await useCase.ExecuteAsync();
 
-        // Assert
+       // Assert
         dailyBalanceRepositoryMock.Verify(x => x.DeleteAllAsync(), Times.Once);
         dailyBalanceRepositoryMock.Verify(x => x.UpsertAsync(It.Is<DailyBalance>(b =>
-            b.AccountId == accountId &&
+            b.TenantId == tenantId &&
             b.Balance == 50m // 100 credit - 50 debit
         )), Times.AtLeastOnce);
     }

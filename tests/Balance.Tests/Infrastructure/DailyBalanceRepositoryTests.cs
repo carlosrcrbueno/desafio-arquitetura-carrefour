@@ -11,8 +11,8 @@ public class DailyBalanceRepositoryTests
     public async Task UpsertAsync_DeveInserirNovoSaldo()
     {
         // Arrange
-      var repository = new FakeDailyBalanceRepository();
-        var balance = new DailyBalance(1, Guid.NewGuid(), new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 100m);
+        var repository = new FakeDailyBalanceRepository();
+        var balance = new DailyBalance(1, Guid.NewGuid(), new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 10000L);
 
         // Act
         await repository.UpsertAsync(balance).ConfigureAwait(false);
@@ -31,10 +31,10 @@ public class DailyBalanceRepositoryTests
         var accountId = Guid.NewGuid();
         var date = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var original = new DailyBalance(1, accountId, date, 100m);
+      var original = new DailyBalance(1, accountId, date, 10000L);
         await repository.UpsertAsync(original).ConfigureAwait(false);
 
-      var updated = new DailyBalance(1, accountId, date, 150m);
+     var updated = new DailyBalance(1, accountId, date, 15000L);
 
         // Act
         await repository.UpsertAsync(updated).ConfigureAwait(false);
@@ -53,9 +53,9 @@ public class DailyBalanceRepositoryTests
         var accountId = Guid.NewGuid();
         const int tenantId = 1;
 
-        await repository.UpsertAsync(new DailyBalance(tenantId, accountId, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 100m)).ConfigureAwait(false);
-        await repository.UpsertAsync(new DailyBalance(tenantId, accountId, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc), 150m)).ConfigureAwait(false);
-        await repository.UpsertAsync(new DailyBalance(2, Guid.NewGuid(), new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 999m)).ConfigureAwait(false);
+       await repository.UpsertAsync(new DailyBalance(tenantId, accountId, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 10000L)).ConfigureAwait(false);
+        await repository.UpsertAsync(new DailyBalance(tenantId, accountId, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc), 15000L)).ConfigureAwait(false);
+        await repository.UpsertAsync(new DailyBalance(2, Guid.NewGuid(), new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 99900L)).ConfigureAwait(false);
 
        var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var end = new DateTime(2026, 1, 2, 23, 59, 59, DateTimeKind.Utc);

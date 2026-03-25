@@ -6,8 +6,9 @@ namespace Api.Middlewares;
 
 public class RateLimitMiddleware
 {
-    private const int LimitPerMinute = 50;
-    private const int WindowSeconds = 60;
+    private const int LimitPerSecond = 50;
+    private const int WindowSeconds = 30;
+    private const int WindowLimit = LimitPerSecond * WindowSeconds;
 
     private readonly RequestDelegate _next;
     private readonly IDatabase _redis;
@@ -21,25 +22,45 @@ public class RateLimitMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var endpoint = context.Request.Path.ToString();
-        var key = $"ratelimit:{ip}:{endpoint}";
+     var endpoint = context.Request.Path.ToString();
 
-        // incrementa contador no Redis e define TTL se for a primeira vez
-        var count = await _redis.StringIncrementAsync(key);
-        if (count == 1)
+        // segundo atual (epoch)
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        // identificador de janela deslizante baseado em WindowSeconds
+        var windowId = now / WindowSeconds;
+        var key = $"ratelimit:{ip}:{endpoint}:{windowId}";
+
+        // campo do hash referente ao segundo atual dentro da janela
+        var field = (now % WindowSeconds).ToString();
+
+        // incrementa contador do segundo atual
+        var _ = await _redis.HashIncrementAsync(key, field);
+
+        // define TTL um pouco maior que a janela para permitir leitura dos últimos segundos
+        await _redis.KeyExpireAsync(key, TimeSpan.FromSeconds(WindowSeconds + 2));
+
+        // obtém todos os contadores de segundos desta janela
+        var entries = await _redis.HashGetAllAsync(key);
+        long totalInWindow = 0;
+        foreach (var entry in entries)
         {
-            await _redis.KeyExpireAsync(key, TimeSpan.FromSeconds(WindowSeconds));
+            if (long.TryParse(entry.Name!, out var secondOffset) &&
+                secondOffset >= 0 && secondOffset < WindowSeconds)
+            {
+                if (long.TryParse(entry.Value!, out var value))
+                {
+                    totalInWindow += value;
+                }
+            }
         }
 
-        if (count > LimitPerMinute)
+        if (totalInWindow > WindowLimit)
         {
-            var ttl = await _redis.KeyTimeToLiveAsync(key) ?? TimeSpan.FromSeconds(WindowSeconds);
-            var remainingSeconds = (int)Math.Ceiling(ttl.TotalSeconds);
-
             context.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
             context.Response.ContentType = "application/json";
 
-            var message = $"Seu Ip será liberado em {remainingSeconds} segundos, até lá suas requisições para este endpoint estarão impedidas.";
+            var message = $"Limite de {LimitPerSecond} requisições por segundo (janela de {WindowSeconds}s) excedido.";
             var payload = JsonSerializer.Serialize(new { error = message });
             await context.Response.WriteAsync(payload);
             return;

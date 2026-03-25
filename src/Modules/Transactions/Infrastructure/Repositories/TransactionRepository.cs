@@ -29,7 +29,9 @@ public class TransactionRepository : ITransactionRepository
 
         EnsurePartitionTableExistsAsync(tableName).GetAwaiter().GetResult();
 
-        const string insertSqlTemplate = @"INSERT INTO {0} (Id, AccountId, Amount, Type, CreatedAt) VALUES (@Id, @AccountId, @Amount, @Type, @CreatedAt);";
+     const string insertSqlTemplate = @"INSERT INTO {0} (Id, AccountId, Amount, Type, CreatedAt, IdempotenceKey)
+VALUES (@Id, @AccountId, @Amount, @Type, @CreatedAt, @IdempotenceKey)
+ON CONFLICT (IdempotenceKey) DO NOTHING;";
         var insertSql = string.Format(insertSqlTemplate, tableName);
 
         using var connection = _connectionFactory.CreateConnection();
@@ -40,9 +42,10 @@ public class TransactionRepository : ITransactionRepository
 
         AddParameter(command, "@Id", DbType.Guid, transaction.Id);
         AddParameter(command, "@AccountId", DbType.Guid, transaction.AccountId);
-        AddParameter(command, "@Amount", DbType.Decimal, transaction.Amount);
+       AddParameter(command, "@Amount", DbType.Int64, transaction.AmountInCents);
         AddParameter(command, "@Type", DbType.Int32, (int)transaction.Type);
         AddParameter(command, "@CreatedAt", DbType.DateTime, transaction.CreatedAt.ToUniversalTime());
+        AddParameter(command, "@IdempotenceKey", DbType.String, transaction.IdempotenceKey);
 
         command.ExecuteNonQuery();
 
@@ -63,7 +66,7 @@ public class TransactionRepository : ITransactionRepository
 
         foreach (var tableName in GetPartitionTableNamesInRange(startDate, endDate))
         {
-            var selectSql = $"SELECT Id, AccountId, Amount, Type, CreatedAt FROM {tableName} WHERE AccountId = @AccountId AND CreatedAt >= @StartDate AND CreatedAt <= @EndDate";
+            var selectSql = $"SELECT Id, AccountId, Amount, Type, CreatedAt, IdempotenceKey FROM {tableName} WHERE AccountId = @AccountId AND CreatedAt >= @StartDate AND CreatedAt <= @EndDate";
 
             using var connection = _connectionFactory.CreateConnection();
             connection.Open();
@@ -80,11 +83,12 @@ public class TransactionRepository : ITransactionRepository
                 {
                     var id = reader.GetGuid(0);
                     var accountIdValue = reader.GetGuid(1);
-                    var amount = reader.GetDecimal(2);
+                    var amountInCents = reader.GetInt64(2);
                     var type = (TransactionType)reader.GetInt32(3);
                     var createdAt = reader.GetDateTime(4).ToUniversalTime();
+                    var idempotenceKey = reader.GetString(5);
 
-                    var transaction = new Transaction(0, id, accountIdValue, amount, type, createdAt);
+                    var transaction = new Transaction(0, id, accountIdValue, amountInCents, type, createdAt, idempotenceKey);
                     results.Add(transaction);
                 }
         }
@@ -112,9 +116,9 @@ public class TransactionRepository : ITransactionRepository
                 tableNames.Add(tablesReader.GetString(0));
             }
 
-            foreach (var tableName in tableNames)
+           foreach (var tableName in tableNames)
             {
-                var selectSql = $"SELECT Id, AccountId, Amount, Type, CreatedAt FROM {tableName}";
+                var selectSql = $"SELECT Id, AccountId, Amount, Type, CreatedAt, IdempotenceKey FROM {tableName}";
 
                 using var selectCommand = connection.CreateCommand();
                 selectCommand.CommandText = selectSql;
@@ -124,11 +128,12 @@ public class TransactionRepository : ITransactionRepository
                 {
                     var id = reader.GetGuid(0);
                     var accountId = reader.GetGuid(1);
-                    var amount = reader.GetDecimal(2);
+                    var amountInCents = reader.GetInt64(2);
                     var type = (TransactionType)reader.GetInt32(3);
                     var createdAt = reader.GetDateTime(4).ToUniversalTime();
+                    var idempotenceKey = reader.GetString(5);
 
-                    var transaction = new Transaction(0, id, accountId, amount, type, createdAt);
+                    var transaction = new Transaction(0, id, accountId, amountInCents, type, createdAt, idempotenceKey);
                     results.Add(transaction);
                 }
             }
@@ -164,9 +169,11 @@ public class TransactionRepository : ITransactionRepository
         var createSql = $@"CREATE TABLE {tableName} (
     Id uuid NOT NULL PRIMARY KEY,
     AccountId uuid NOT NULL,
-    Amount numeric(18,2) NOT NULL,
+    Amount bigint NOT NULL,
     Type integer NOT NULL,
-    CreatedAt timestamp NOT NULL
+    CreatedAt timestamp NOT NULL,
+    IdempotenceKey text NOT NULL,
+    CONSTRAINT UX_{tableName}_IdempotenceKey UNIQUE (IdempotenceKey)
 );";
 
         using var createCommand = connection.CreateCommand();

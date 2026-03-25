@@ -22,7 +22,13 @@ public class FakeTransactionRepository : ITransactionRepository
         var tableName = GetPartitionTableName(transaction.CreatedAt);
         UsedTables.Add(tableName);
 
-        _transactions.Add(transaction);
+            // Simula idempotência: não insere se já houver transação com mesma IdempotenceKey
+            if (_transactions.Any(t => t.IdempotenceKey == transaction.IdempotenceKey))
+            {
+                return Task.CompletedTask;
+            }
+
+            _transactions.Add(transaction);
         return Task.CompletedTask;
     }
 

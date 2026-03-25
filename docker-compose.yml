@@ -24,7 +24,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: docs/docker/Dockerfile
+      dockerfile: Dockerfile
     container_name: cashflow-api
     env_file:
       - .env

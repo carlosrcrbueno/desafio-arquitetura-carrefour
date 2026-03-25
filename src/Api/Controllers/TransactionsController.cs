@@ -28,10 +28,10 @@ public class TransactionsController : ControllerBase
 			return BadRequest(ModelState);
 		}
 
-		if (request is null)
-		{
-			return BadRequest(new { error = "Request is null" });
-		}
+        if (request is null)
+        {
+            return BadRequest(new { error = "Request is null" });
+        }
 
         // TenantId must come from middleware (AuthorizationMockMiddleware) via HttpContext.Items.
         if (!HttpContext.Items.TryGetValue("TenantId", out var tenantObj) || tenantObj is not int tenantId || tenantId <= 0)

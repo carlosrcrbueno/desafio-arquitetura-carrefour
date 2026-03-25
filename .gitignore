@@ -55,3 +55,6 @@ nunit-*.xml
 
 # Environment configuration
 .env
+
+#vs folder
+.vs/

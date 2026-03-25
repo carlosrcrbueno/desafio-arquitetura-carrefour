@@ -15,5 +15,7 @@ public interface IDailyBalanceRepository
         DateTime endDate
     );
 
+    Task<DailyBalance?> GetByTenantAndDateAsync(int tenantId, DateTime dateUtc);
+
     Task DeleteAllAsync();
 }

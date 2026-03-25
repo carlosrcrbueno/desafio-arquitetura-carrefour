@@ -28,9 +28,9 @@ public class RebuildDailyBalancesUseCaseTests
 
         var transactions = new List<Transaction>
         {
-            new(tenantId, Guid.NewGuid(), accountId, 100m, TransactionType.Credit, new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc)),
-            new(tenantId, Guid.NewGuid(), accountId, 50m, TransactionType.Debit, new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)),
-            new(tenantId, Guid.NewGuid(), accountId, 25m, TransactionType.Credit, new DateTime(2026, 1, 2, 9, 0, 0, DateTimeKind.Utc))
+           new(tenantId, Guid.NewGuid(), accountId, 10000L, TransactionType.Credit, new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc), "rebuild-1"),
+            new(tenantId, Guid.NewGuid(), accountId, 5000L, TransactionType.Debit, new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc), "rebuild-2"),
+            new(tenantId, Guid.NewGuid(), accountId, 2500L, TransactionType.Credit, new DateTime(2026, 1, 2, 9, 0, 0, DateTimeKind.Utc), "rebuild-3")
         };
 
         var balanceAmountCredit = transactions.Where(x=>x.Type == TransactionType.Credit).Sum(x => x.Amount);
@@ -48,17 +48,16 @@ public class RebuildDailyBalancesUseCaseTests
 
         // Assert
         var all = dailyBalanceRepository.GetAll();
-        Assert.Equal(3, all.Count);
+     Assert.Equal(2, all.Count);
 
-		var day1 = all.FirstOrDefault(b => b.Date.Date == new DateTime(2026, 1, 1, 10, 0, 0).Date);
-		
-		var day2 = all.FirstOrDefault(b => b.Date.Date == new DateTime(2026, 1, 2, 9, 0, 0).Date);
+        var day1 = all.FirstOrDefault(b => b.Date.Date == new DateTime(2026, 1, 1).Date);
+        var day2 = all.FirstOrDefault(b => b.Date.Date == new DateTime(2026, 1, 2).Date);
 
-		Assert.NotNull(day1);
-		Assert.NotNull(day2);
+        Assert.NotNull(day1);
+        Assert.NotNull(day2);
 
-		Assert.Equal(100m, day1!.Balance);
-		Assert.Equal(25m, day2!.Balance);
+        Assert.Equal(50m, day1!.Balance); // 100 - 50
+        Assert.Equal(25m, day2!.Balance);
         Assert.Equal(75m, balanceAmount);
 
 

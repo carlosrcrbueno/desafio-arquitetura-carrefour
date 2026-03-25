@@ -34,6 +34,7 @@ public class TransactionFlowTests
 
         var request = new CreateTransactionRequest
         {
+          TenantId = 1,
             Amount = 100m,
             Type = Shared.Enums.TransactionType.Credit
         };
@@ -47,9 +48,8 @@ public class TransactionFlowTests
         Assert.Equal(response.TransactionId, savedTransaction!.Id);
 
         eventBusMock.Verify(
-            x => x.PublishAsync(It.Is<TransactionCreatedEvent>(e =>
+         x => x.PublishAsync(It.Is<TransactionCreatedEvent>(e =>
                 e.TransactionId == response.TransactionId &&
-                e.AccountId == request.AccountId &&
                 e.Amount == request.Amount &&
                 e.Type == request.Type
             )),
