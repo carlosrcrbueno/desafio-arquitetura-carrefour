@@ -102,8 +102,8 @@ Body (exemplo):
 
 ```json
 {
-  "amount": 100.0,
-  "type": "Credit"
+  "amount": 1000, //em centavos
+  "type": 1 //"Credit"
 }
 ```
 
