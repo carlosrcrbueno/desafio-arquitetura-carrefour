@@ -1,11 +1,12 @@
 namespace Transactions.Application.DTOs;
 
 using System;
-using Transactions.Domain.Enums;
+using Shared.Enums;
 
 public class CreateTransactionRequest
 {
-    public Guid AccountId { get; init; }
-    public decimal Amount { get; init; }
-    public TransactionType Type { get; init; }
+    public int TenantId { get; set; }
+	public Guid AccountId => Guid.NewGuid();
+	public decimal Amount { get; set; }
+	public TransactionType Type { get; set; }
 }

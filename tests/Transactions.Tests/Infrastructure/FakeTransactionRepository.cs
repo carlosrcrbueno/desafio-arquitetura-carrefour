@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Transactions.Domain.Entities;
-using Transactions.Domain.Enums;
 using Transactions.Domain.Interfaces;
 
 public class FakeTransactionRepository : ITransactionRepository

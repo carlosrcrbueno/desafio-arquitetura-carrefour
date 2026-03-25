@@ -1,7 +1,7 @@
 namespace Balance.Infrastructure.Database;
 
 using System.Data;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Shared.Database;
 
 public class SqlConnectionFactory : IDbConnectionFactory
@@ -15,6 +15,6 @@ public class SqlConnectionFactory : IDbConnectionFactory
 
     public IDbConnection CreateConnection()
     {
-        return new SqlConnection(_connectionString);
+        return new NpgsqlConnection(_connectionString);
     }
 }

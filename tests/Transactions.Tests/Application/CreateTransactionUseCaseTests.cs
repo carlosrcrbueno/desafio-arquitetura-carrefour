@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 using Moq;
 using Shared.Contracts;
 using Shared.Messaging;
+using Shared.Enums;
 using Transactions.Application.DTOs;
 using Transactions.Application.UseCases;
 using Transactions.Domain.Entities;
-using Transactions.Domain.Enums;
 using Transactions.Domain.Interfaces;
 using Xunit;
 
@@ -25,7 +25,7 @@ public class CreateTransactionUseCaseTests
 
         var request = new CreateTransactionRequest
         {
-            AccountId = Guid.NewGuid(),
+            
             Amount = 100m,
             Type = TransactionType.Credit
         };
@@ -49,7 +49,6 @@ public class CreateTransactionUseCaseTests
 
         var request = new CreateTransactionRequest
         {
-            AccountId = Guid.NewGuid(),
             Amount = 0m,
             Type = TransactionType.Credit
         };
@@ -69,7 +68,6 @@ public class CreateTransactionUseCaseTests
 
         var request = new CreateTransactionRequest
         {
-            AccountId = Guid.NewGuid(),
             Amount = 100m,
             Type = TransactionType.Credit
         };

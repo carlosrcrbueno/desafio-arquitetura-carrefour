@@ -30,6 +30,14 @@ public class AuthorizationMockMiddleware
             return;
         }
 
+        // Resolve TenantId from header X-Tenant-Id as int and store it for controllers/use cases.
+        if (context.Request.Headers.TryGetValue("X-Tenant-Id", out var tenantHeader)
+            && int.TryParse(tenantHeader, out var tenantId)
+            && tenantId > 0)
+        {
+            context.Items["TenantId"] = tenantId;
+        }
+
         await _next(context);
     }
 }

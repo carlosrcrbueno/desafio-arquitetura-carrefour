@@ -16,26 +16,26 @@ public class GetDailyBalanceUseCaseTests
     public async Task ExecuteAsync_DeveRetornarSaldos()
     {
         // Arrange
-        var repositoryMock = new Mock<IDailyBalanceRepository>();
+       var repositoryMock = new Mock<IDailyBalanceRepository>();
         var useCase = new GetDailyBalanceUseCase(repositoryMock.Object);
 
-        var accountId = Guid.NewGuid();
-        var start = new DateTime(2026, 1, 1);
-        var end = new DateTime(2026, 1, 31);
+        const int tenantId = 1;
+        var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var end = new DateTime(2026, 1, 31, 23, 59, 59, DateTimeKind.Utc);
 
         var balances = new List<DailyBalance>
         {
-            new(accountId, new DateOnly(2026, 1, 1), 100m),
-            new(accountId, new DateOnly(2026, 1, 2), 150m)
+            new(tenantId, Guid.NewGuid(), new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 100m),
+            new(tenantId, Guid.NewGuid(), new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc), 150m)
         };
 
         repositoryMock
-            .Setup(r => r.GetByAccountAndPeriodAsync(accountId, start, end))
+            .Setup(r => r.GetByTenantAndPeriodAsync(tenantId, start, end))
             .ReturnsAsync(balances);
 
         var request = new GetDailyBalanceRequest
         {
-            AccountId = accountId,
+            TenantId = tenantId,
             StartDate = start,
             EndDate = end
         };
@@ -51,20 +51,20 @@ public class GetDailyBalanceUseCaseTests
     public async Task ExecuteAsync_SemDados_DeveRetornarListaVazia()
     {
         // Arrange
-        var repositoryMock = new Mock<IDailyBalanceRepository>();
+       var repositoryMock = new Mock<IDailyBalanceRepository>();
         var useCase = new GetDailyBalanceUseCase(repositoryMock.Object);
 
-        var accountId = Guid.NewGuid();
-        var start = new DateTime(2026, 1, 1);
-        var end = new DateTime(2026, 1, 31);
+        const int tenantId = 1;
+        var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var end = new DateTime(2026, 1, 31, 23, 59, 59, DateTimeKind.Utc);
 
         repositoryMock
-            .Setup(r => r.GetByAccountAndPeriodAsync(accountId, start, end))
+            .Setup(r => r.GetByTenantAndPeriodAsync(tenantId, start, end))
             .ReturnsAsync(new List<DailyBalance>());
 
         var request = new GetDailyBalanceRequest
         {
-            AccountId = accountId,
+            TenantId = tenantId,
             StartDate = start,
             EndDate = end
         };

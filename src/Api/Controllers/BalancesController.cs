@@ -6,6 +6,9 @@ using Balance.Application.DTOs;
 using Balance.Application.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
+// TenantId é resolvido por middleware (ex.: AuthorizationMockMiddleware)
+// e armazenado no HttpContext.Items["TenantId"].
+
 [Route("balances")]
 public class BalancesController : ControllerBase
 {
@@ -22,20 +25,24 @@ public class BalancesController : ControllerBase
 
     [HttpGet("daily")]
     public async Task<IActionResult> GetDaily(
-        [FromQuery] Guid accountId,
         [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
     {
-        if (accountId == Guid.Empty || startDate == default || endDate == default || endDate < startDate)
+        if (startDate == default || endDate == default || endDate < startDate)
         {
             return BadRequest(new { error = "Invalid query parameters" });
         }
 
+      if (!HttpContext.Items.TryGetValue("TenantId", out var tenantObj) || tenantObj is not int tenantId || tenantId <= 0)
+        {
+            return BadRequest(new { error = "TenantId is required" });
+        }
+
         var request = new GetDailyBalanceRequest
         {
-            AccountId = accountId,
-            StartDate = startDate,
-            EndDate = endDate
+            TenantId = tenantId,
+            StartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc),
+            EndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc)
         };
 
         var result = await _getDailyBalanceUseCase.ExecuteAsync(request).ConfigureAwait(false);

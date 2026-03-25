@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Balance.Domain.Entities;
 using Balance.Domain.Interfaces;
+using Shared.Enums;
 using Transactions.Domain.Entities;
 using Transactions.Domain.Interfaces;
 
@@ -31,22 +32,24 @@ public class RebuildDailyBalancesUseCase : IRebuildDailyBalancesUseCase
             .ThenBy(t => t.CreatedAt)
             .ToList();
 
-        var balances = new Dictionary<(Guid AccountId, DateOnly Date), decimal>();
+        // Key: TenantId + AccountId + Date (daily granularity, UTC)
+        var balances = new Dictionary<(int TenantId, Guid AccountId, DateTime Date), decimal>();
 
         foreach (var transaction in ordered)
         {
-            var key = (transaction.AccountId, DateOnly.FromDateTime(transaction.CreatedAt.Date));
+            var date = transaction.CreatedAt.ToUniversalTime().Date;
+            var key = (transaction.TenantId, transaction.AccountId, date);
 
             if (!balances.TryGetValue(key, out var current))
             {
                 current = 0m;
             }
 
-            var newBalance = transaction.Type == Transactions.Domain.Enums.TransactionType.Credit
-                ? current + transaction.Amount
-                : current - transaction.Amount;
+            var delta = transaction.Type == TransactionType.Credit
+                ? transaction.Amount
+                : -transaction.Amount;
 
-            balances[key] = newBalance;
+            balances[key] = current + delta;
         }
 
         // Recreate DailyBalances from computed dictionary.
@@ -54,10 +57,10 @@ public class RebuildDailyBalancesUseCase : IRebuildDailyBalancesUseCase
 
         foreach (var entry in balances)
         {
-            var (accountId, date) = entry.Key;
+            var (tenantId, accountId, date) = entry.Key;
             var balance = entry.Value;
 
-            var dailyBalance = new DailyBalance(accountId, date, balance);
+            var dailyBalance = new DailyBalance(tenantId, accountId, date, balance);
             await _dailyBalanceRepository.UpsertAsync(dailyBalance).ConfigureAwait(false);
         }
     }

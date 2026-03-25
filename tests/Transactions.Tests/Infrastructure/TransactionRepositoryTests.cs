@@ -2,8 +2,8 @@ namespace Transactions.Tests.Infrastructure;
 
 using System;
 using System.Threading.Tasks;
+using Shared.Enums;
 using Transactions.Domain.Entities;
-using Transactions.Domain.Enums;
 using Xunit;
 
 public class TransactionRepositoryTests
@@ -12,9 +12,10 @@ public class TransactionRepositoryTests
     public async Task InsertAsync_DeveSalvarNaParticaoCorreta()
     {
         // Arrange
-        var repository = new FakeTransactionRepository();
+       var repository = new FakeTransactionRepository();
         var createdAt = new DateTime(2026, 1, 10, 10, 0, 0, DateTimeKind.Utc);
         var transaction = new Transaction(
+            1,
             Guid.NewGuid(),
             Guid.NewGuid(),
             100m,
@@ -32,12 +33,13 @@ public class TransactionRepositoryTests
     public async Task GetByAccountAndPeriodAsync_DeveRetornarDadosDoPeriodo()
     {
         // Arrange
-        var repository = new FakeTransactionRepository();
+       var repository = new FakeTransactionRepository();
         var accountId = Guid.NewGuid();
+        const int tenantId = 1;
 
-        var t1 = new Transaction(Guid.NewGuid(), accountId, 50m, TransactionType.Credit, new DateTime(2026, 1, 5));
-        var t2 = new Transaction(Guid.NewGuid(), accountId, 75m, TransactionType.Debit, new DateTime(2026, 1, 15));
-        var t3 = new Transaction(Guid.NewGuid(), accountId, 25m, TransactionType.Credit, new DateTime(2026, 2, 1));
+        var t1 = new Transaction(tenantId, Guid.NewGuid(), accountId, 50m, TransactionType.Credit, new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc));
+        var t2 = new Transaction(tenantId, Guid.NewGuid(), accountId, 75m, TransactionType.Debit, new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc));
+        var t3 = new Transaction(tenantId, Guid.NewGuid(), accountId, 25m, TransactionType.Credit, new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc));
 
         await repository.InsertAsync(t1).ConfigureAwait(false);
         await repository.InsertAsync(t2).ConfigureAwait(false);
@@ -58,11 +60,12 @@ public class TransactionRepositoryTests
     public async Task GetByAccountAndPeriodAsync_DeveConsultarMultiplasParticoes()
     {
         // Arrange
-        var repository = new FakeTransactionRepository();
+       var repository = new FakeTransactionRepository();
         var accountId = Guid.NewGuid();
+        const int tenantId = 1;
 
-        var janTransaction = new Transaction(Guid.NewGuid(), accountId, 50m, TransactionType.Credit, new DateTime(2026, 1, 31));
-        var febTransaction = new Transaction(Guid.NewGuid(), accountId, 75m, TransactionType.Credit, new DateTime(2026, 2, 1));
+        var janTransaction = new Transaction(tenantId, Guid.NewGuid(), accountId, 50m, TransactionType.Credit, new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Utc));
+        var febTransaction = new Transaction(tenantId, Guid.NewGuid(), accountId, 75m, TransactionType.Credit, new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc));
 
         await repository.InsertAsync(janTransaction).ConfigureAwait(false);
         await repository.InsertAsync(febTransaction).ConfigureAwait(false);

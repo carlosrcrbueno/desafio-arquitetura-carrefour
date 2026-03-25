@@ -424,46 +424,44 @@ public interface IDailyBalanceRepository
 ✔ NÃO alterar assinaturas
 ✔ NÃO mudar tipos de retorno
 💾 ESQUEMA DE BANCO DE DADOS (OBRIGATÓRIO)
-📊 1. TABELAS DE TRANSACTIONS (PARTICIONADAS)
 
-Nome:
-
-transactions_{YYYY}_{MM}
-Estrutura
+✔ Transactions
 CREATE TABLE transactions_2026_01 (
-    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-    AccountId UNIQUEIDENTIFIER NOT NULL,
-    Amount DECIMAL(18,2) NOT NULL,
-    Type INT NOT NULL,
-    CreatedAt DATETIME2 NOT NULL
+    id UUID PRIMARY KEY,
+    account_id UUID NOT NULL,
+    amount NUMERIC(18,2) NOT NULL,
+    type INT NOT NULL,
+    created_at TIMESTAMP NOT NULL
 );
-Regras
-✔ criar tabela dinamicamente se não existir
-✔ usar CreatedAt para definir partição
-✔ Type = 1 (Credit) ou 2 (Debit)
-📊 2. TABELA DE SALDO
-CREATE TABLE DailyBalances (
-    AccountId UNIQUEIDENTIFIER NOT NULL,
-    Date DATE NOT NULL,
-    Balance DECIMAL(18,2) NOT NULL,
-    PRIMARY KEY (AccountId, Date)
-);
+
+✔ DailyBalances
+CREATE TABLE daily_balances (
+    account_id UUID NOT NULL,
+       date DATE NOT NULL,
+       balance NUMERIC(18,2) NOT NULL,
+       PRIMARY KEY (account_id, date)
+   );
+
+   ✔ REGRAS SQL
+   ✔ usar snake_case no banco
+   ✔ tabelas em minúsculo
+   ✔ colunas em minúsculo
 ⚙️ PROVIDER ADO.NET (OBRIGATÓRIO)
-USAR: SQL SERVER
+USAR: PostgreSQL
+Provider: Npgsql
+
 ✔ Implementação
 using System.Data;
-using Microsoft.Data.SqlClient;
-✔ Conexão
+using Npgsql;
+
 public IDbConnection CreateConnection()
 {
-    return new SqlConnection(connectionString);
-}
-❌ PROIBIDO
-❌ Npgsql
-❌ MySql
-❌ Sqlite
-❌ abstrair provider
-🧠 REGRAS DE IMPLEMENTAÇÃO (OBRIGATÓRIO)
+       return new NpgsqlConnection(connectionString);
+   }
+
+   ❌ PROIBIDO
+   ❌ SqlConnection
+   ❌ Microsoft.Data.SqlClient🧠 REGRAS DE IMPLEMENTAÇÃO (OBRIGATÓRIO)
 ✔ ADO.NET PURO
 ✔ usar SqlCommand
 ✔ usar parâmetros (@param)
@@ -501,6 +499,11 @@ Fluxo
 ✔ respeita particionamento
 ✔ repositórios seguem contrato
 ✔ schema respeitado
+
+📦 DEPENDÊNCIA (OBRIGATÓRIO)
+
+   Package obrigatório:
+   Npgsql
 ❌ SE QUALQUER ITEM FALHAR
 PARAR EXECUÇÃO
 NÃO CORRIGIR AUTOMATICAMENTE
@@ -781,3 +784,359 @@ Os testes representam:
 ✔ validação do comportamento esperado
 ✔ garantia de integridade do ledger
 ✔ garantia de consistência do saldo
+
+📁 24. ESTRUTURA DE DOCUMENTAÇÃO (OBRIGATÓRIO)
+
+O agente DEVE criar a seguinte estrutura na raiz do projeto:
+
+docs/
+
+ ├── arquitetura/
+ ├── docker/
+ ├── postman/
+📂 docs/arquitetura
+✔ conter todos os documentos arquiteturais
+✔ NÃO gerar conteúdo automaticamente
+✔ apenas garantir existência da pasta
+🐳 docs/docker (OBRIGATÓRIO)
+
+O agente DEVE criar:
+
+docs/docker/docker-compose.yml
+docs/docker/Dockerfile
+✔ Requisitos do docker-compose
+✔ subir SQL Server
+✔ subir API
+✔ configurar rede entre containers
+✔ configurar variáveis de ambiente
+✔ garantir persistência de dados (volume)
+✔ SQL Server
+image: mcr.microsoft.com/mssql/server:2022-latest
+✔ API
+✔ build a partir do Dockerfile
+✔ expor porta 5000
+❌ PROIBIDO
+❌ usar banco externo
+❌ deixar infra fora do docker-compose
+📬 docs/postman
+✔ criar arquivo:
+docs/postman/collection.json
+
+✔ deve conter:
+- POST /transactions
+- GET /transactions
+- GET /balances/daily
+- POST /balances/rebuild
+🧪 BLOCO 2 — TESTES DE FLUXO (CRÍTICO)
+🧠 25. TESTES DE INTEGRAÇÃO / FLUXO (OBRIGATÓRIO)
+
+O agente DEVE implementar testes de fluxo completos.
+
+📦 25.1 Ledger → Event → Read Model
+Arquivo:
+Transactions.Tests/Integration/TransactionFlowTests.cs
+Método obrigatório
+CreateTransaction_DeveAtualizarLedgerEReadModel
+Cenário
+Dado:
+- request válido
+
+Quando:
+- transação criada
+
+Então:
+✔ salva no ledger
+✔ publica evento
+✔ atualiza read model
+📦 25.2 Falha + Reprocessamento
+Arquivo:
+Balance.Tests/Integration/ReprocessingFlowTests.cs
+Método obrigatório
+FalhaNoReadModel_DeveSerCorrigidaComReprocessamento
+Cenário
+Dado:
+- transação salva no ledger
+- falha simulada no read model
+
+Quando:
+- reprocessamento executado
+
+Então:
+✔ saldo reconstruído corretamente
+⚙️ BANCO PARA TESTES (OBRIGATÓRIO)
+✔ usar repositórios in-memory
+✔ simular particionamento
+✔ NÃO usar SQL Server real
+✔ Implementações obrigatórias
+FakeTransactionRepository
+FakeDailyBalanceRepository
+❌ PROIBIDO
+❌ usar docker nos testes
+❌ usar banco real
+❌ usar infraestrutura real
+🧠 VALIDAÇÃO
+✔ fluxo completo testado
+✔ falha simulada
+✔ reprocessamento validado
+⚡ BLOCO 3 — RATE LIMIT (REQUISITO FUNCIONAL)
+🛡️ 26. RATE LIMIT (OBRIGATÓRIO)
+✔ Regra
+50 requisições por minuto por IP
+✔ Aplicação
+✔ aplicar em TODOS os endpoints
+✔ comportamento global
+✔ Implementação
+
+Deve ser implementado como middleware.
+RATE LIMIT (OBRIGATÓRIO)
+
+Deve ser implementado como middleware.
+
+✔ Comportamento
+✔ até 50 requisições por minuto POR IP E POR ENDPOINT → permitido
+✔ acima disso → bloqueado
+✔ Chave de controle
+{ip}:{endpoint}
+✔ Armazenamento
+✔ utilizar Redis
+✔ usar TTL nativo do Redis (60 segundos)
+✔ Response
+429 Too Many Requests
+{
+  "error": "Seu Ip será liberado em {tempo_restante_segundos} segundos, até lá suas requisições para este endpoint estarão impedidas."
+}
+✔ Regra de cálculo do tempo
+✔ tempo_restante deve ser obtido diretamente do TTL da chave no Redis
+✔ NÃO calcular manualmente
+⚠️ REGRAS
+✔ rate limit deve ser aplicado por IP e por endpoint
+✔ endpoints devem possuir contadores independentes
+✔ Redis é a única fonte de verdade para controle e tempo
+✔ middleware não deve conter lógica de negócio
+❌ PROIBIDO
+❌ usar controle em memória
+❌ usar timestamp manual para cálculo de tempo
+❌ rate limit global (sem considerar endpoint)
+❌ ignorar IP
+❌ implementar parcialmente
+🧠 VALIDAÇÃO FINAL
+✔ limite aplicado por IP + endpoint
+✔ TTL de 5 minutos controlado pelo Redis
+✔ resposta 429 com tempo restante correto
+✔ comportamento consistente entre múltiplos endpoints
+✔ não afeta lógica de negócio
+🎯 RESULTADO FINAL
+
+Agora o guideline cobre:
+
+✔ arquitetura
+✔ domínio
+✔ application
+✔ infrastructure
+✔ api
+✔ testes unitários
+✔ testes de fluxo
+✔ docker
+✔ documentação
+✔ rate limit
+✔ observabilidade (via interfaces)
+✔ segurança
+
+27. CONFIGURAÇÃO DO DOCKER (OBRIGATÓRIO)
+✔ docker-compose.yml — VARIÁVEIS FIXAS
+
+O agente DEVE utilizar exatamente:
+
+version: '3.9'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: cashflow-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong!Passw0rd
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+
+  api:
+    build:
+      context: ../../
+      dockerfile: docs/docker/Dockerfile
+    container_name: cashflow-api
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=CashflowDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+    ports:
+      - "5000:5000"
+    depends_on:
+      - sqlserver
+
+volumes:
+  sql_data:
+⚠️ REGRAS
+✔ NÃO alterar senha
+✔ NÃO alterar nomes de serviços
+✔ NÃO alterar portas
+🧪 BLOCO — TESTES DO RATE LIMIT
+🧠 28. TESTES DO RATE LIMIT (OBRIGATÓRIO)
+📦 Arquivo
+Api.Tests/Middleware/RateLimitMiddlewareTests.cs
+✔ Métodos obrigatórios
+DevePermitirAte50RequisicoesPorMinuto
+DeveBloquearApos50Requisicoes
+DeveRetornarStatus429QuandoExcedido
+✔ Cenários
+DevePermitirAte50RequisicoesPorMinuto
+Dado:
+- mesmo IP
+
+Quando:
+- 50 requisições executadas
+
+Então:
+✔ todas devem retornar sucesso
+DeveBloquearApos50Requisicoes
+Dado:
+- 50 requisições já realizadas
+
+Quando:
+- 51ª requisição executada
+
+Então:
+✔ deve ser bloqueada
+DeveRetornarStatus429QuandoExcedido
+Então:
+✔ status = 429
+✔ body = { "error": "Rate limit exceeded" }
+⚠️ REGRAS
+✔ simular HttpContext
+✔ não subir servidor real
+✔ não usar rede
+🌐 BLOCO — TESTES DE CONTROLLER (INTEGRAÇÃO LEVE)
+🧠 29. TESTES DE CONTROLLERS (OBRIGATÓRIO)
+📦 Arquivo
+Api.Tests/Controllers/TransactionsControllerTests.cs
+Api.Tests/Controllers/BalanceControllerTests.cs
+✔ TransactionsControllerTests
+Métodos
+PostTransactions_DeveRetornar201QuandoSucesso
+PostTransactions_DeveRetornar400QuandoInvalido
+GetTransactions_DeveRetornar200ComDados
+✔ BalanceControllerTests
+Métodos
+GetDailyBalance_DeveRetornar200
+PostRebuild_DeveRetornar204
+✔ Regras
+✔ mockar use cases com Moq
+✔ NÃO acessar banco
+✔ NÃO usar infraestrutura real
+🔁 BLOCO — REVISÃO OBRIGATÓRIA DOS CONTROLLERS
+🧠 30. VALIDAÇÃO DOS CONTROLLERS (OBRIGATÓRIO)
+
+O agente DEVE garantir:
+
+✔ controller NÃO contém regra de negócio
+✔ apenas chama use case
+✔ mapeia request/response
+✔ trata status code corretamente
+❌ PROIBIDO
+❌ lógica no controller
+❌ acesso direto ao repository
+❌ cálculos no controller
+
+Perfeito — o Copilot está 100% correto de novo.
+
+👉 E aqui a solução é a mesma lógica dos outros pontos:
+
+NÃO pedir pra ele criar
+→ DEFINIR no guideline
+🎯 O que vamos fazer
+
+Vou te entregar um bloco determinístico de .env, incluindo:
+
+✔ variáveis obrigatórias
+✔ valores padrão
+✔ integração com docker-compose
+✔ como a API deve consumir
+📄 BLOCO PARA ADICIONAR NO GUIDELINE — .ENV (DEFINITIVO)
+⚙️ 31. ARQUIVO .ENV (OBRIGATÓRIO)
+
+O agente DEVE criar um arquivo .env na raiz do projeto.
+
+📂 Localização
+/.env
+
+📄 Conteúdo OBRIGATÓRIO
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=cashflowdb
+
+API_PORT=5000
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=cashflowdb;Username=postgres;Password=postgres
+ConnectionStrings__Redis=redis:6379
+
+🐳 USO NO DOCKER-COMPOSE (OBRIGATÓRIO)
+
+O docker-compose.yml DEVE utilizar o .env.
+
+✔ Regra
+env_file:
+  - ../../.env
+
+✔ Exemplo (PostgreSQL)
+postgres:
+  image: postgres:15
+  container_name: cashflow-postgres
+  environment:
+    - POSTGRES_USER=${POSTGRES_USER}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - POSTGRES_DB=${POSTGRES_DB}
+  ports:
+    - "5432:5432"
+  volumes:
+    - pg_data:/var/lib/postgresql/data
+
+✔ Exemplo (API)
+environment:
+  - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection}
+  - ConnectionStrings__Redis=${ConnectionStrings__Redis}
+
+🧠 USO NA APLICAÇÃO (.NET)
+
+✔ Regra
+✔ usar IConfiguration
+✔ NÃO ler arquivo manualmente
+✔ NÃO usar bibliotecas externas para .env
+
+✔ Exemplo
+builder.Configuration["ConnectionStrings:DefaultConnection"];
+builder.Configuration["ConnectionStrings:Redis"];
+
+⚠️ REGRAS
+✔ .env é a fonte única de configuração
+✔ NÃO duplicar valores no código
+✔ NÃO hardcodar connection strings
+
+❌ PROIBIDO
+❌ definir valores direto no Program.cs
+❌ ignorar .env no docker-compose
+❌ criar variáveis não definidas acima
+
+🔐 SEGURANÇA
+✔ .env NÃO deve ser commitado
+✔ adicionar ao .gitignore
+✔ .gitignore
+.env
+
+🧠 VALIDAÇÃO FINAL
+✔ .env existe na raiz
+✔ docker-compose usa env_file
+✔ API consome via IConfiguration
+✔ nenhuma variável hardcoded
+

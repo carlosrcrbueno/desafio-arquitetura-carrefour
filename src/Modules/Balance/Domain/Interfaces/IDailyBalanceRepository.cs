@@ -9,8 +9,8 @@ public interface IDailyBalanceRepository
 {
     Task UpsertAsync(DailyBalance balance);
 
-    Task<IReadOnlyList<DailyBalance>> GetByAccountAndPeriodAsync(
-        Guid accountId,
+    Task<IReadOnlyList<DailyBalance>> GetByTenantAndPeriodAsync(
+        int tenantId,
         DateTime startDate,
         DateTime endDate
     );
