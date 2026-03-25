@@ -292,4 +292,43 @@ Este repositório implementa um **MVP em monólito modular** que:
 - Garante idempotência em transações via `IdempotenceKey` exposta na API.
 - Protege a API com rate limiting persistido em Redis.
 
+---
+
+## 7. Referências de documentação e diagramas
+
+Este repositório é um MVP que implementa, em um monólito modular, conceitos definidos em documentações e diagramas externos, que detalham:
+
+- Visão de domínio (Transações, Balance e demais bounded contexts).
+- Requisitos funcionais e não-funcionais.
+- Padrões de integração, resiliente design, segurança, observabilidade etc.
+- Diagramas de contexto, componentes e fluxos principais.
+
+Esses materiais não estão públicos por padrão. Para acessá‑los, é necessário solicitar liberação de acesso por e‑mail.
+
+### 7.1. Documentação funcional e arquitetural
+
+- **Wiki de arquitetura e domínio**  
+  URL: https://inftecbr.atlassian.net/wiki/spaces/DABC/overview  
+
+  Esta wiki contém:
+  - Descrição detalhada dos domínios e subdomínios.
+  - Regras de negócio associadas ao cashflow.
+  - Diretrizes de arquitetura (estilos, decisões e trade‑offs).
+  - Padrões de integração e contratos de serviços planejados.
+
+### 7.2. Diagramas de arquitetura
+
+- **Diagramas de arquitetura (contexto, componentes, fluxos)**  
+  URL: https://drive.google.com/file/d/1UD8nMWDZlyIQ3nRDyO3KRXhLvlsb0SLO/view?usp=sharing  
+
+  Este material inclui:
+  - Diagramas de alto nível (contexto, macro‑componentes).
+  - Diagramas de módulos e integrações.
+  - Fluxos principais de criação de transações, atualização de saldo diário e consumo de eventos.
+
+### 7.3. Como solicitar acesso
+
+Caso você precise acessar a documentação completa (wiki e diagramas), entre em contato por e‑mail solicitando a liberação de acesso.  
+O acesso é concedido sob demanda, para garantir controle sobre quem visualiza os documentos proprietários da solução.
+
 Ou seja, mesmo sem dividir em múltiplos serviços, o código adota as mesmas ideias de arquitetura propostas no documento, servindo como **prova de conceito** e base sólida para uma futura evolução para microserviços, se/quando necessário.
