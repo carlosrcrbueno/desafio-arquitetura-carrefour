@@ -20,20 +20,43 @@ public class TransactionsController : ControllerBase
         _getTransactionsUseCase = getTransactionsUseCase;
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateTransactionRequest request)
-    {
+	[HttpPost]
+	public async Task<IActionResult> Create([FromBody] CreateTransactionRequest request)
+	{
+		if (!ModelState.IsValid)
+		{
+			return BadRequest(ModelState);
+		}
+
         if (request is null)
         {
-            return BadRequest(new { error = "Invalid request data" });
+            return BadRequest(new { error = "Request is null" });
         }
 
+        // TenantId must come from middleware (AuthorizationMockMiddleware) via HttpContext.Items.
+        if (!HttpContext.Items.TryGetValue("TenantId", out var tenantObj) || tenantObj is not int tenantId || tenantId <= 0)
+        {
+            return BadRequest(new { error = "TenantId is required" });
+        }
+
+        request.TenantId = tenantId;
+
+        var hasIdempotenceKey = !string.IsNullOrWhiteSpace(request.IdempotenceKey);
         var response = await _createTransactionUseCase.ExecuteAsync(request).ConfigureAwait(false);
 
-        return StatusCode(201, response);
-    }
+        if (hasIdempotenceKey && !response.IsNew)
+        {
+            return Ok(new { message = "valor já processado" });
+        }
 
-    [HttpGet]
+        return StatusCode(201, new
+        {
+            transactionId = response.TransactionId,
+            accountId = response.AccountId
+        });
+	}
+
+	[HttpGet]
     public async Task<IActionResult> Get(
         [FromQuery] Guid accountId,
         [FromQuery] DateTime startDate,

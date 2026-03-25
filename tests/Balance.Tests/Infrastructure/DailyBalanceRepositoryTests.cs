@@ -12,7 +12,7 @@ public class DailyBalanceRepositoryTests
     {
         // Arrange
         var repository = new FakeDailyBalanceRepository();
-        var balance = new DailyBalance(Guid.NewGuid(), new DateOnly(2026, 1, 1), 100m);
+        var balance = new DailyBalance(1, Guid.NewGuid(), new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 10000L);
 
         // Act
         await repository.UpsertAsync(balance).ConfigureAwait(false);
@@ -27,14 +27,14 @@ public class DailyBalanceRepositoryTests
     public async Task UpsertAsync_DeveAtualizarSaldoExistente()
     {
         // Arrange
-        var repository = new FakeDailyBalanceRepository();
+      var repository = new FakeDailyBalanceRepository();
         var accountId = Guid.NewGuid();
-        var date = new DateOnly(2026, 1, 1);
+        var date = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var original = new DailyBalance(accountId, date, 100m);
+      var original = new DailyBalance(1, accountId, date, 10000L);
         await repository.UpsertAsync(original).ConfigureAwait(false);
 
-        var updated = new DailyBalance(accountId, date, 150m);
+     var updated = new DailyBalance(1, accountId, date, 15000L);
 
         // Act
         await repository.UpsertAsync(updated).ConfigureAwait(false);
@@ -49,18 +49,19 @@ public class DailyBalanceRepositoryTests
     public async Task GetByAccountAndPeriodAsync_DeveRetornarSaldos()
     {
         // Arrange
-        var repository = new FakeDailyBalanceRepository();
+      var repository = new FakeDailyBalanceRepository();
         var accountId = Guid.NewGuid();
+        const int tenantId = 1;
 
-        await repository.UpsertAsync(new DailyBalance(accountId, new DateOnly(2026, 1, 1), 100m)).ConfigureAwait(false);
-        await repository.UpsertAsync(new DailyBalance(accountId, new DateOnly(2026, 1, 2), 150m)).ConfigureAwait(false);
-        await repository.UpsertAsync(new DailyBalance(Guid.NewGuid(), new DateOnly(2026, 1, 1), 999m)).ConfigureAwait(false);
+       await repository.UpsertAsync(new DailyBalance(tenantId, accountId, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 10000L)).ConfigureAwait(false);
+        await repository.UpsertAsync(new DailyBalance(tenantId, accountId, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc), 15000L)).ConfigureAwait(false);
+        await repository.UpsertAsync(new DailyBalance(2, Guid.NewGuid(), new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), 99900L)).ConfigureAwait(false);
 
-        var start = new DateTime(2026, 1, 1);
-        var end = new DateTime(2026, 1, 2);
+       var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var end = new DateTime(2026, 1, 2, 23, 59, 59, DateTimeKind.Utc);
 
         // Act
-        var result = await repository.GetByAccountAndPeriodAsync(accountId, start, end).ConfigureAwait(false);
+      var result = await repository.GetByTenantAndPeriodAsync(tenantId, start, end).ConfigureAwait(false);
 
         // Assert
         Assert.Equal(2, result.Count);

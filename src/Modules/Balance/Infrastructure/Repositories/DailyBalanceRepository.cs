@@ -3,101 +3,147 @@ namespace Balance.Infrastructure.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 using Balance.Domain.Entities;
 using Balance.Domain.Interfaces;
 using Shared.Database;
 
 public class DailyBalanceRepository : IDailyBalanceRepository
 {
-    private readonly IDbConnectionFactory _connectionFactory;
+	private readonly IDbConnectionFactory _connectionFactory;
 
-    public DailyBalanceRepository(IDbConnectionFactory connectionFactory)
-    {
-        _connectionFactory = connectionFactory;
-    }
+	public DailyBalanceRepository(IDbConnectionFactory connectionFactory)
+	{
+		_connectionFactory = connectionFactory;
+	}
 
-    public async Task UpsertAsync(DailyBalance balance)
-    {
-        if (balance is null)
-        {
-            throw new ArgumentNullException(nameof(balance));
-        }
+	public Task UpsertAsync(DailyBalance balance)
+	{
+		if (balance is null)
+		{
+			throw new ArgumentNullException(nameof(balance));
+		}
 
-        const string sql = @"MERGE INTO DailyBalances AS target
-USING (SELECT @AccountId AS AccountId, @Date AS Date, @Balance AS Balance) AS source
-ON target.AccountId = source.AccountId AND target.Date = source.Date
-WHEN MATCHED THEN
-    UPDATE SET Balance = source.Balance
-WHEN NOT MATCHED THEN
-    INSERT (AccountId, Date, Balance) VALUES (source.AccountId, source.Date, source.Balance);";
+     const string sql = @"INSERT INTO DailyBalances (TenantId, Date, Balance)
+VALUES (@TenantId, @Date, @Balance)
+ON CONFLICT (TenantId, Date)
+DO UPDATE SET Balance = EXCLUDED.Balance;";
 
-        // Use synchronous open since IDbConnection does not expose OpenAsync.
-        using var connection = _connectionFactory.CreateConnection();
-        connection.Open();
+		using var connection = _connectionFactory.CreateConnection();
+		connection.Open();
 
-        await using var command = (SqlCommand)connection.CreateCommand();
-        command.CommandText = sql;
+		// Ensure the DailyBalances table exists before attempting to upsert on this connection.
+		EnsureTableExists(connection);
 
-        command.Parameters.Add(new SqlParameter("@AccountId", SqlDbType.UniqueIdentifier) { Value = balance.AccountId });
-        command.Parameters.Add(new SqlParameter("@Date", SqlDbType.Date) { Value = balance.Date });
-        command.Parameters.Add(new SqlParameter("@Balance", SqlDbType.Decimal) { Value = balance.Balance });
+		using var command = connection.CreateCommand();
+		command.CommandText = sql;
 
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-    }
+     AddParameter(command, "@TenantId", DbType.Int32, balance.TenantId);
+		AddParameter(command, "@Date", DbType.DateTime, balance.Date.ToUniversalTime());
+		AddParameter(command, "@Balance", DbType.Int64, balance.BalanceInCents);
 
-    public async Task<IReadOnlyList<DailyBalance>> GetByAccountAndPeriodAsync(
-        Guid accountId,
-        DateTime startDate,
-        DateTime endDate)
-    {
-        if (endDate < startDate)
-        {
-            throw new ArgumentException("End date must be greater than or equal to start date.", nameof(endDate));
-        }
+		command.ExecuteNonQuery();
 
-        const string sql = @"SELECT AccountId, Date, Balance
+		return Task.CompletedTask;
+	}
+
+	public Task<IReadOnlyList<DailyBalance>> GetByTenantAndPeriodAsync(
+			   int tenantId,
+		   DateTime startDate,
+		   DateTime endDate)
+	{
+		try
+		{
+			if (endDate < startDate)
+			{
+				throw new ArgumentException("End date must be greater than or equal to start date.", nameof(endDate));
+			}
+
+          const string sql = @"SELECT TenantId, Date, Balance
 FROM DailyBalances
-WHERE AccountId = @AccountId AND Date >= @StartDate AND Date <= @EndDate
+WHERE TenantId = @TenantId AND Date >= @StartDate AND Date <= @EndDate
 ORDER BY Date";
 
-        var results = new List<DailyBalance>();
+			var results = new List<DailyBalance>();
 
-        using var connection = _connectionFactory.CreateConnection();
-        connection.Open();
+			using var connection = _connectionFactory.CreateConnection();
+			connection.Open();
 
-        await using var command = (SqlCommand)connection.CreateCommand();
-        command.CommandText = sql;
+			// Ensure the DailyBalances table exists before querying on this connection.
+			EnsureTableExists(connection);
 
-        command.Parameters.Add(new SqlParameter("@AccountId", SqlDbType.UniqueIdentifier) { Value = accountId });
-        command.Parameters.Add(new SqlParameter("@StartDate", SqlDbType.Date) { Value = startDate.Date });
-        command.Parameters.Add(new SqlParameter("@EndDate", SqlDbType.Date) { Value = endDate.Date });
+			using var command = connection.CreateCommand();
+			command.CommandText = sql;
 
-        await using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
-        while (await reader.ReadAsync().ConfigureAwait(false))
-        {
-            var accountIdValue = reader.GetGuid(0);
-            var dateValue = reader.GetDateTime(1); // DATE maps to DateTime
-            var balanceValue = reader.GetDecimal(2);
+			AddParameter(command, "@TenantId", DbType.Int32, tenantId);
+			AddParameter(command, "@StartDate", DbType.DateTime, startDate.ToUniversalTime());
+			AddParameter(command, "@EndDate", DbType.DateTime, endDate.ToUniversalTime());
 
-            var dailyBalance = new DailyBalance(accountIdValue, DateOnly.FromDateTime(dateValue), balanceValue);
-            results.Add(dailyBalance);
-        }
+			using var reader = command.ExecuteReader();
+			while (reader.Read())
+			{
+             var tenantIdValue = reader.GetInt32(0);
+				var dateTime = reader.GetDateTime(1).ToUniversalTime();
+				var balanceInCents = reader.GetInt64(2);
+				// Usa Guid.Empty como AccountId pois o modelo atual não diferencia contas neste contexto
+				var dailyBalance = new DailyBalance(tenantIdValue, Guid.Empty, dateTime, balanceInCents);
+				results.Add(dailyBalance);
+			}
 
-        return results;
-    }
+			return Task.FromResult<IReadOnlyList<DailyBalance>>(results);
 
-    public async Task DeleteAllAsync()
-    {
-        const string sql = "DELETE FROM DailyBalances";
+		}
+		catch (Exception ex)
+		{
 
-        using var connection = _connectionFactory.CreateConnection();
-        connection.Open();
+			throw;
+		}
 
-        await using var command = (SqlCommand)connection.CreateCommand();
-        command.CommandText = sql;
+	}
 
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-    }
+	public async Task<DailyBalance?> GetByTenantAndDateAsync(int tenantId, DateTime dateUtc)
+	{
+		var day = DateTime.SpecifyKind(dateUtc.Date, DateTimeKind.Utc);
+		var list = await GetByTenantAndPeriodAsync(tenantId, day, day).ConfigureAwait(false);
+		return list.FirstOrDefault();
+	}
+
+	public Task DeleteAllAsync()
+	{
+		const string sql = "DELETE FROM DailyBalances";
+
+		using var connection = _connectionFactory.CreateConnection();
+		connection.Open();
+
+		using var command = connection.CreateCommand();
+		command.CommandText = sql;
+
+		command.ExecuteNonQuery();
+
+		return Task.CompletedTask;
+	}
+
+	private static void EnsureTableExists(IDbConnection connection)
+	{
+     const string createSql = @"
+CREATE TABLE IF NOT EXISTS DailyBalances (
+	TenantId integer NOT NULL,
+	Date timestamp NOT NULL,
+	Balance bigint NOT NULL,
+	CONSTRAINT PK_DailyBalances PRIMARY KEY (TenantId, Date)
+);";
+
+		using var createCommand = connection.CreateCommand();
+		createCommand.CommandText = createSql;
+		createCommand.ExecuteNonQuery();
+	}
+	private static void AddParameter(IDbCommand command, string name, DbType dbType, object value)
+	{
+		var parameter = command.CreateParameter();
+		parameter.ParameterName = name;
+		parameter.DbType = dbType;
+		parameter.Value = value;
+		command.Parameters.Add(parameter);
+	}
 }

@@ -19,7 +19,7 @@ public class ErrorHandlingMiddleware
         {
             await _next(context);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             if (!context.Response.HasStarted)
             {

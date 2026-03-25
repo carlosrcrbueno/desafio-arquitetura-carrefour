@@ -1,2 +1,9 @@
 <Solution>
+  <Project path="src/Api/Api.csproj" />
+  <Project path="src/Modules/Transactions/Transactions.csproj" />
+  <Project path="src/Modules/Balance/Balance.csproj" />
+  <Project path="src/Shared/Shared.csproj" />
+  <Project path="tests/Transactions.Tests/Transactions.Tests.csproj" />
+  <Project path="tests/Balance.Tests/Balance.Tests.csproj" />
+  <Project path="tests/Api.Tests/Api.Tests.csproj" />
 </Solution>

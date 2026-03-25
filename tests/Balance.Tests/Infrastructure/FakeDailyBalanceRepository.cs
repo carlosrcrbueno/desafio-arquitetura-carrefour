@@ -28,10 +28,10 @@ public class FakeDailyBalanceRepository : IDailyBalanceRepository
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<DailyBalance>> GetByAccountAndPeriodAsync(Guid accountId, DateTime startDate, DateTime endDate)
+   public Task<IReadOnlyList<DailyBalance>> GetByTenantAndPeriodAsync(int tenantId, DateTime startDate, DateTime endDate)
     {
         var result = _balances
-            .Where(b => b.AccountId == accountId && b.Date >= DateOnly.FromDateTime(startDate) && b.Date <= DateOnly.FromDateTime(endDate))
+            .Where(b => b.TenantId == tenantId && b.Date >= startDate.ToUniversalTime() && b.Date <= endDate.ToUniversalTime())
             .OrderBy(b => b.Date)
             .ToList();
 
@@ -42,6 +42,13 @@ public class FakeDailyBalanceRepository : IDailyBalanceRepository
     {
         _balances.Clear();
         return Task.CompletedTask;
+    }
+
+    public Task<DailyBalance?> GetByTenantAndDateAsync(int tenantId, DateTime dateUtc)
+    {
+        var day = DateTime.SpecifyKind(dateUtc.Date, DateTimeKind.Utc);
+        var result = _balances.FirstOrDefault(b => b.TenantId == tenantId && b.Date.Date == day.Date);
+        return Task.FromResult(result);
     }
 
     public IReadOnlyList<DailyBalance> GetAll() => _balances.ToList();

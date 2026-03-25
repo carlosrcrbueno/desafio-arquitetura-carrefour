@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Transactions.Domain.Entities;
-using Transactions.Domain.Enums;
 using Transactions.Domain.Interfaces;
 
 public class FakeTransactionRepository : ITransactionRepository
@@ -13,7 +12,7 @@ public class FakeTransactionRepository : ITransactionRepository
     private readonly List<Transaction> _transactions = new();
     public readonly List<string> UsedTables = new();
 
-    public Task InsertAsync(Transaction transaction)
+    public Task<bool> InsertAsync(Transaction transaction)
     {
         if (transaction is null)
         {
@@ -23,8 +22,14 @@ public class FakeTransactionRepository : ITransactionRepository
         var tableName = GetPartitionTableName(transaction.CreatedAt);
         UsedTables.Add(tableName);
 
-        _transactions.Add(transaction);
-        return Task.CompletedTask;
+          // Simula idempotência: não insere se já houver transação com mesma IdempotenceKey
+            if (_transactions.Any(t => t.IdempotenceKey == transaction.IdempotenceKey))
+            {
+                return Task.FromResult(false);
+            }
+
+            _transactions.Add(transaction);
+        return Task.FromResult(true);
     }
 
     public Task<IReadOnlyList<Transaction>> GetByAccountAndPeriodAsync(Guid accountId, DateTime startDate, DateTime endDate)

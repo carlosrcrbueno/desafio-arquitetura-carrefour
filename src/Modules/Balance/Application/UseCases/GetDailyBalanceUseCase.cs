@@ -1,7 +1,5 @@
 namespace Balance.Application.UseCases;
 
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Balance.Application.DTOs;
 using Balance.Domain.Interfaces;
@@ -15,19 +13,23 @@ public class GetDailyBalanceUseCase : IGetDailyBalanceUseCase
         _dailyBalanceRepository = dailyBalanceRepository;
     }
 
-    public async Task<IReadOnlyList<DailyBalanceDto>> ExecuteAsync(GetDailyBalanceRequest request)
+  public async Task<DailyBalanceDto?> ExecuteAsync(GetDailyBalanceRequest request)
     {
-        var balances = await _dailyBalanceRepository
-            .GetByAccountAndPeriodAsync(request.AccountId, request.StartDate, request.EndDate)
+        var balance = await _dailyBalanceRepository
+            .GetByTenantAndDateAsync(request.TenantId, request.StartDate)
             .ConfigureAwait(false);
 
-        return balances
-            .Select(b => new DailyBalanceDto
-            {
-                AccountId = b.AccountId,
-                Date = b.Date,
-                Balance = b.Balance
-            })
-            .ToList();
+        if (balance is null)
+        {
+            return null;
+        }
+
+        return new DailyBalanceDto
+        {
+            TenantId = balance.TenantId,
+            AccountId = balance.AccountId,
+            Date = balance.Date,
+            Balance = balance.Balance
+        };
     }
 }

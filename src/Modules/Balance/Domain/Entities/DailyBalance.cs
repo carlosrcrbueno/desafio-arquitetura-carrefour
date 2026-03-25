@@ -4,14 +4,17 @@ using System;
 
 public class DailyBalance
 {
+    public int TenantId { get; }
     public Guid AccountId { get; }
-    public DateOnly Date { get; }
-    public decimal Balance { get; }
+    public DateTime Date { get; }
+ public long BalanceInCents { get; }
+    public decimal Balance => BalanceInCents / 100m;
 
-    public DailyBalance(Guid accountId, DateOnly date, decimal balance)
+   public DailyBalance(int tenantId, Guid accountId, DateTime date, long balanceInCents)
     {
+        TenantId = tenantId;
         AccountId = accountId;
-        Date = date;
-        Balance = balance;
+        Date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
+      BalanceInCents = balanceInCents;
     }
 }

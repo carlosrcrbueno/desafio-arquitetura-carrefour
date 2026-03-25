@@ -1,7 +1,7 @@
 namespace Transactions.Application.DTOs;
 
 using System;
-using Transactions.Domain.Enums;
+using Shared.Enums;
 
 public class TransactionDto
 {

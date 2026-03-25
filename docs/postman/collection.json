@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "Cashflow API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Transaction",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Tenant-Id",
+            "value": "{{tenantId}}",
+            "type": "text"
+          },
+          {
+            "key": "X-Idempotence-Key",
+            "value": "{{idempotenceKey}}",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer token",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/transactions",
+          "host": ["{{baseUrl}}"],
+          "path": ["transactions"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 100.0,\n  \"type\": \"Credit\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Get Daily Balance",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Tenant-Id",
+            "value": "{{tenantId}}",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer token",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/balances/daily?startDate={{startDate}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["balances", "daily"],
+          "query": [
+            { "key": "startDate", "value": "{{startDate}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Rebuild Balances",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Tenant-Id",
+            "value": "{{tenantId}}",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer token",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/balances/rebuild",
+          "host": ["{{baseUrl}}"],
+          "path": ["balances", "rebuild"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7165" },
+    { "key": "accountId", "value": "00000000-0000-0000-0000-000000000000" },
+    { "key": "tenantId", "value": "11111116" },
+    { "key": "startDate", "value": "2026-01-01" },
+    { "key": "endDate", "value": "2026-01-31T23:59:59" },
+    { "key": "idempotenceKey", "value": "pedido-123" }
+  ]
+}

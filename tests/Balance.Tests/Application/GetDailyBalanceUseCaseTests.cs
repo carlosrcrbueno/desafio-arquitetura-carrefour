@@ -1,7 +1,6 @@
 namespace Balance.Tests.Application;
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Balance.Application.DTOs;
 using Balance.Application.UseCases;
@@ -13,66 +12,63 @@ using Xunit;
 public class GetDailyBalanceUseCaseTests
 {
     [Fact]
-    public async Task ExecuteAsync_DeveRetornarSaldos()
+ public async Task ExecuteAsync_DeveRetornarSaldoDoDia()
     {
         // Arrange
-        var repositoryMock = new Mock<IDailyBalanceRepository>();
+       var repositoryMock = new Mock<IDailyBalanceRepository>();
         var useCase = new GetDailyBalanceUseCase(repositoryMock.Object);
 
-        var accountId = Guid.NewGuid();
-        var start = new DateTime(2026, 1, 1);
-        var end = new DateTime(2026, 1, 31);
-
-        var balances = new List<DailyBalance>
-        {
-            new(accountId, new DateOnly(2026, 1, 1), 100m),
-            new(accountId, new DateOnly(2026, 1, 2), 150m)
-        };
+        const int tenantId = 1;
+        var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+      var balance = new DailyBalance(tenantId, Guid.NewGuid(), start, 10000L);
 
         repositoryMock
-            .Setup(r => r.GetByAccountAndPeriodAsync(accountId, start, end))
-            .ReturnsAsync(balances);
+            .Setup(r => r.GetByTenantAndDateAsync(tenantId, start))
+            .ReturnsAsync(balance);
 
         var request = new GetDailyBalanceRequest
         {
-            AccountId = accountId,
-            StartDate = start,
-            EndDate = end
+            TenantId = tenantId,
+          StartDate = start,
+            EndDate = start
         };
 
         // Act
-        var result = await useCase.ExecuteAsync(request).ConfigureAwait(false);
+     var result = await useCase.ExecuteAsync(request).ConfigureAwait(false);
 
         // Assert
-        Assert.Equal(2, result.Count);
+        Assert.NotNull(result);
+        Assert.Equal(tenantId, result!.TenantId);
+        Assert.Equal(start, result.Date);
+        Assert.Equal(100m, result.Balance);
     }
 
     [Fact]
-    public async Task ExecuteAsync_SemDados_DeveRetornarListaVazia()
+    public async Task ExecuteAsync_SemDados_DeveRetornarNulo()
     {
         // Arrange
-        var repositoryMock = new Mock<IDailyBalanceRepository>();
+       var repositoryMock = new Mock<IDailyBalanceRepository>();
         var useCase = new GetDailyBalanceUseCase(repositoryMock.Object);
 
-        var accountId = Guid.NewGuid();
-        var start = new DateTime(2026, 1, 1);
-        var end = new DateTime(2026, 1, 31);
+        const int tenantId = 1;
+        var start = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+      var end = new DateTime(2026, 1, 31, 23, 59, 59, DateTimeKind.Utc);
 
         repositoryMock
-            .Setup(r => r.GetByAccountAndPeriodAsync(accountId, start, end))
-            .ReturnsAsync(new List<DailyBalance>());
+            .Setup(r => r.GetByTenantAndDateAsync(tenantId, start))
+            .ReturnsAsync((DailyBalance?)null);
 
         var request = new GetDailyBalanceRequest
         {
-            AccountId = accountId,
+            TenantId = tenantId,
             StartDate = start,
             EndDate = end
         };
 
         // Act
-        var result = await useCase.ExecuteAsync(request).ConfigureAwait(false);
+     var result = await useCase.ExecuteAsync(request).ConfigureAwait(false);
 
         // Assert
-        Assert.Empty(result);
+        Assert.Null(result);
     }
 }
