@@ -2,7 +2,7 @@
 
 Este repositório contém um **MVP de uma API de cashflow** construída em **.NET 8 / C# 12**.
 
-O objetivo não é apenas “fazer funcionar”, mas **aplicar, em um monólito modular, os conceitos de arquitetura** definidos nos documentos em `docs/arquitetura` (PDF). Entre esses conceitos estão:
+O objetivo não é apenas “fazer funcionar”, mas **aplicar, em um monolito modular, os conceitos de arquitetura** definidos nos documentos em `docs/arquitetura` (PDF). Entre esses conceitos estão:
 
 - Separação clara de domínios (Transações, Balance).
 - Uso de eventos internos para alimentar read models.
